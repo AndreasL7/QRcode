@@ -1,0 +1,9 @@
+settings:
+  font_size: 80
+  padding: 40
+  box_size: 15
+  output_dir: data/processed
+locations:
+- 15L3-BULK-1-A1-1
+- 15L3-BULK-1-A1-2
+- 15L3-BULK-1-A1-3

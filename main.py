@@ -7,6 +7,9 @@ from loguru import logger
 import hydra
 from omegaconf import DictConfig
 from PIL import Image, ImageDraw, ImageFont
+from docx import Document
+from docx.enum.section import WD_ORIENT
+from docx.shared import Cm, Inches
 
 def get_font(size):
     """Helper to find a valid system font."""
@@ -84,5 +87,46 @@ def generate_batch(cfg: DictConfig):
         logger.info(f"  [✔] Generated: {final_path}")
 
 
+def create_full_page_qr_doc(output_dir: str, docx_path: str = "qr_codes_landscape_a4.docx"):
+    doc = Document()
+
+    # ── Set A4 landscape on the first section (applies to whole doc unless we add sections)
+    section = doc.sections[0]
+    section.orientation = WD_ORIENT.LANDSCAPE
+    section.page_width  = Cm(29.7)   # A4 landscape
+    section.page_height = Cm(21.0)
+
+    # Optional: reduce margins so QR can be larger (default is ~2.54 cm)
+    section.left_margin   = Cm(1.0)
+    section.right_margin  = Cm(1.0)
+    section.top_margin    = Cm(1.0)
+    section.bottom_margin = Cm(1.5)  # a bit more at bottom if adding text
+
+    png_files = sorted(
+        [f for f in os.listdir(output_dir) if f.lower().endswith(".png")]
+    )
+
+    for i, filename in enumerate(png_files):
+        # if i > 0:
+        #     doc.add_page_break()   # new page for each QR after the first
+
+        full_path = os.path.join(output_dir, filename)
+        location_name = os.path.splitext(filename)[0]
+
+        # Add picture – centered by using its own paragraph
+        p = doc.add_paragraph()
+        p.alignment = 1  # WD_ALIGN_PARAGRAPH.CENTER
+
+        run = p.add_run()
+        # Try to fill most of the usable height (portrait height is now the limiting dimension)
+        # ≈ 21 cm page height − top/bottom margins − some breathing room
+        run.add_picture(full_path, height=Cm(18.0))   # ← tune this: 17–19 cm usually fits well
+
+    doc.save(docx_path)
+    print(f"Saved: {docx_path}  ({len(png_files)} pages)")
+
 if __name__ == "__main__":
     generate_batch()
+    # Example usage (integrate with your existing code)
+    create_full_page_qr_doc(output_dir="data/processed", docx_path="qr_codes_landscape_a4.docx")
+    
